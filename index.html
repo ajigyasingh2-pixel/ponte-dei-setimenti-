@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Il Ponte dei Sentimenti</title>
+<style>
+    body {
+        margin: 0;
+        overflow: hidden;
+        font-family: 'Comic Sans MS', cursive, sans-serif;
+        background: pink;
+    }
+    #gameCanvas {
+        display: block;
+        margin: 0 auto;
+        background: #ffe6f2;
+        border: 3px solid #ff6699;
+    }
+    /* Messaggio in alto (istruzioni) */
+    #message {
+        position: absolute;
+        top: 10px;
+        width: 100%;
+        text-align: center;
+        font-size: 20px;
+        font-weight: bold;
+        color: #d6005c;
+        text-shadow: 1px 1px 2px white;
+    }
+    /* Nuvoletta messaggio romantico */
+    #bubble {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0.8);
+        background: white;
+        border-radius: 30px;
+        padding: 20px 30px;
+        max-width: 70%;
+        text-align: center;
+        font-size: 20px;
+        font-weight: bold;
+        color: #d6005c;
+        box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+        border: 3px solid #ff6699;
+        display: none;
+        animation: pop 0.5s ease forwards;
+        z-index: 10;
+    }
+    @keyframes pop {
+        from { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+        to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    }
+    /* Pulsanti touch */
+    #controls {
+        position: absolute;
+        bottom: 20px;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+    }
+    .btn {
+        background: #ff6699;
+        color: white;
+        font-size: 24px;
+        border: none;
+        border-radius: 50%;
+        width: 60px;
+        height: 60px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    .btn:active {
+        transform: scale(0.9);
+    }
+</style>
+</head>
+<body>
+<div id="message">Costruisci il ponte per unire i cuori 💞</div>
+<canvas id="gameCanvas" width="400" height="600"></canvas>
+<div id="bubble"></div>
+
+<!-- Pulsanti per telefono -->
+<div id="controls">
+    <button class="btn" id="left">←</button>
+    <button class="btn" id="drop">↓</button>
+    <button class="btn" id="right">→</button>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let block = null;
+let blocks = [];
+let bridgeBuilt = false;
+let messageBox = document.getElementById('message');
+
+// Cuori ai lati
+const leftHeart = {x: 40, y: 500, r: 20};
+const rightHeart = {x: 340, y: 500, r: 20};
+let heartsMeet = false;
+
+// Frasi romantiche
+const messages = [
+    "Ti amo più di qualsiasi altra cosa, stellina ✨",
+    "Potrei rimanere ore e ore a ammirare i tuoi occhi 💕",
+    "Bea, sei la mia felicità ogni giorno 💖",
+    "Con te ogni attimo è magico 🌹",
+    "Il mio cuore sarà sempre tuo, Bea 💘",
+    "Sei la mia stella che illumina la notte 🌙",
+    "Bea, senza di te nulla avrebbe senso 💞",
+    "Ogni ponte che costruisco mi porta più vicino a te 💌",
+    "Sei il mio sogno diventato realtà 🌸",
+    "Bea, ti amerò per sempre ❤"
+];
+
+// Cuoricini esplosivi
+let particles = [];
+
+// Controlli tastiera
+let keys = {};
+document.addEventListener('keydown', e => keys[e.key] = true);
+document.addEventListener('keyup', e => keys[e.key] = false);
+
+// Controlli touch
+document.getElementById('left').addEventListener('click', ()=> moveBlock(-1));
+document.getElementById('right').addEventListener('click', ()=> moveBlock(1));
+document.getElementById('drop').addEventListener('click', ()=> dropBlock());
+
+// Funzioni blocchi
+function spawnBlock() {
+    block = {x: canvas.width/2 - 25, y: 0, w: 50, h: 20};
+}
+function moveBlock(dir) {
+    if(block) block.x += dir * 20;
+}
+function dropBlock() {
+    if(block) block.y += 20;
+}
+
+// Disegna cuore
+function drawHeart(x, y, size, color) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.bezierCurveTo(x - size/2, y - size/2, x - size, y + size/3, x, y + size);
+    ctx.bezierCurveTo(x + size, y + size/3, x + size/2, y - size/2, x, y);
+    ctx.fill();
+}
+
+// Particelle cuoricini
+function createParticles(x,y) {
+    for(let i=0; i<20; i++) {
+        particles.push({
+            x: x, y: y,
+            dx: (Math.random()-0.5)*4,
+            dy: (Math.random()-0.5)*4,
+            life: 60
+        });
+    }
+}
+
+// Aggiorna
+function update() {
+    if(!block && !bridgeBuilt) spawnBlock();
+
+    if(block) {
+        if(keys["ArrowLeft"]) block.x -= 3;
+        if(keys["ArrowRight"]) block.x += 3;
+        if(keys["ArrowDown"]) block.y += 5;
+
+        block.y += 2;
+
+        if(block.y + block.h >= 500) {
+            blocks.push(block);
+            block = null;
+            checkBridge();
+        }
+    }
+
+    if(heartsMeet) {
+        if(leftHeart.x < 180) leftHeart.x += 1;
+        if(rightHeart.x > 220) rightHeart.x -= 1;
+    }
+
+    particles.forEach(p => {
+        p.x += p.dx;
+        p.y += p.dy;
+        p.life--;
+    });
+    particles = particles.filter(p => p.life > 0);
+}
+
+function checkBridge() {
+    // Se abbastanza blocchi formano un ponte
+    if(blocks.length >= 6) {
+        bridgeBuilt = true;
+        heartsMeet = true;
+
+        // Mostra frase dentro la nuvoletta
+        let bubble = document.getElementById("bubble");
+        bubble.textContent = messages[Math.floor(Math.random()*messages.length)];
+        bubble.style.display = "block";
+
+        // Nasconde la nuvoletta dopo 4 secondi
+        setTimeout(() => {
+            bubble.style.display = "none";
+        }, 4000);
+
+        createParticles(200, 500);
+    }
+}
+
+// Disegna
+function draw() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    // Blocchi
+    ctx.fillStyle = "#ff99cc";
+    blocks.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
+
+    // Blocco corrente
+    if(block) {
+        ctx.fillStyle = "#ff6699";
+        ctx.fillRect(block.x, block.y, block.w, block.h);
+    }
+
+    // Cuori
+    drawHeart(leftHeart.x, leftHeart.y, leftHeart.r, "red");
+    drawHeart(rightHeart.x, rightHeart.y, rightHeart.r, "red");
+
+    // Particelle
+    particles.forEach(p => {
+        drawHeart(p.x, p.y, 5, "#ff3366");
+    });
+}
+
+function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+</body>
+</html>
